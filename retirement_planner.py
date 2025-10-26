@@ -1,35 +1,77 @@
 """Retirement planner derived from the provided Excel model.
 
-This is a faithful-as-possible Pythonization using the exposed sheet columns.
+This is a faithful-as-possible conversion using the exposed sheet columns.
 Key simplifying assumptions where the spreadsheet logic wasn't 100% explicit:
 
 - RMDs use the IRS Uniform Lifetime Table (2023+) with first RMD at age 73.
-- AGI = other_income + SSA (taxable portion proxy) + Roth conversions + extra Trad IRA dists + RMD.
+- AGI = other_income + SSA (taxable portion proxy) + Roth conversions
+    + extra Traditional IRA dists + RMD.
 - Taxable income = max(AGI - standard_deduction - senior_deduction, 0).
 - IRMAA is computed from MAGI≈AGI using the supplied brackets.
 - Living expenses inflate annually.
 - If net income (AGI - taxes - IRMAA) is less than living expenses, the gap is pulled from Roth.
-- Trad IRA balance evolves by: grow at investment_return, then subtract RMD, Roth conversion, and extra distributions.
-- Roth IRA balance evolves by: grow at investment_return, add Roth conversion, then subtract any withdrawal to meet expenses.
-- SSA benefit inflates annually; "factor_to_adjust_ssa" (from constants) can optionally scale it if desired.
+- Traditional IRA balance evolves by: grow at investment_return, then subtract RMD, Roth conversion,
+    and extra distributions.
+- Roth IRA balance evolves by: grow at investment_return, add Roth conversion, then subtract any
+    withdrawal to meet expenses.
+- SSA benefit inflates annually; "factor_to_adjust_ssa" (from constants) can optionally scale it if
+    desired.
 
 The code is structured so you can replace any assumption with your own logic.
 """
+
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional
-import math
 
 from income_tax import TaxBracket, compute_tax, DEFAULT_BRACKETS as DEFAULT_TAX_BRACKETS
-from irmaa import IRMAABracket, surcharge_for_magi, DEFAULT_BRACKETS as DEFAULT_IRMAA_BRACKETS
+from irmaa import (
+    IRMAABracket,
+    surcharge_for_magi,
+    DEFAULT_BRACKETS as DEFAULT_IRMAA_BRACKETS,
+)
 
 # Minimal IRS Uniform Lifetime Table for ages 73..110 (2023+). Extend as needed.
 UNIFORM_LIFETIME_DIVISORS = {
-    73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9, 78: 22.0, 79: 21.1, 80: 20.2,
-    81: 19.4, 82: 18.5, 83: 17.7, 84: 16.8, 85: 16.0, 86: 15.2, 87: 14.4, 88: 13.7,
-    89: 12.9, 90: 12.2, 91: 11.5, 92: 10.8, 93: 10.1, 94: 9.5, 95: 8.9, 96: 8.4,
-    97: 7.8, 98: 7.3, 99: 6.8, 100: 6.4, 101: 6.0, 102: 5.6, 103: 5.2, 104: 4.9,
-    105: 4.6, 106: 4.3, 107: 4.1, 108: 3.9, 109: 3.7, 110: 3.5
+    73: 26.5,
+    74: 25.5,
+    75: 24.6,
+    76: 23.7,
+    77: 22.9,
+    78: 22.0,
+    79: 21.1,
+    80: 20.2,
+    81: 19.4,
+    82: 18.5,
+    83: 17.7,
+    84: 16.8,
+    85: 16.0,
+    86: 15.2,
+    87: 14.4,
+    88: 13.7,
+    89: 12.9,
+    90: 12.2,
+    91: 11.5,
+    92: 10.8,
+    93: 10.1,
+    94: 9.5,
+    95: 8.9,
+    96: 8.4,
+    97: 7.8,
+    98: 7.3,
+    99: 6.8,
+    100: 6.4,
+    101: 6.0,
+    102: 5.6,
+    103: 5.2,
+    104: 4.9,
+    105: 4.6,
+    106: 4.3,
+    107: 4.1,
+    108: 3.9,
+    109: 3.7,
+    110: 3.5,
 }
+
 
 @dataclass
 class PlannerInputs:
@@ -53,6 +95,7 @@ class PlannerInputs:
     tax_brackets: Optional[List[TaxBracket]] = None
     irmaa_brackets: Optional[List[IRMAABracket]] = None
 
+
 @dataclass
 class PlannerRow:
     year: int
@@ -74,6 +117,7 @@ class PlannerRow:
     amt_from_roth: float
     net_income: float  # AGI - tax - IRMAA
 
+
 def rmd_for_age(age: int, balance: float, rmd_start_age: int = 73) -> float:
     """Compute RMD given age, using the uniform lifetime table."""
     if age < rmd_start_age:
@@ -83,6 +127,7 @@ def rmd_for_age(age: int, balance: float, rmd_start_age: int = 73) -> float:
         # For ages beyond table, continue decreasing gently
         divisor = max(3.0, 26.5 - (age - 73) * 0.8)
     return balance / divisor
+
 
 def simulate(
     inputs: PlannerInputs,
@@ -103,10 +148,10 @@ def simulate(
         age = inputs.start_age + i
 
         # Inflation multipliers
-        infl_n = (1.0 + inputs.inflation_rate) ** i
+        inflation_n = (1.0 + inputs.inflation_rate) ** i
 
         # Income components
-        ssa = inputs.start_ssa * infl_n * inputs.ssa_factor
+        ssa = inputs.start_ssa * inflation_n * inputs.ssa_factor
         other_income = inputs.other_income  # keep constant; adjust if desired
 
         # Pre-distribution growth
@@ -129,7 +174,9 @@ def simulate(
         # AGI and deductions
         agi = max(0.0, other_income + ssa + rmd + roth_conv + extra_dist)
         std_ded = inputs.start_standard_deduction * ((1.0 + inputs.standard_deduction_growth) ** i)
-        senior_ded = inputs.start_senior_deduction if include_senior_deduction and age >= 65 else 0.0
+        senior_ded = (
+            inputs.start_senior_deduction if include_senior_deduction and age >= 65 else 0.0
+        )
 
         taxable = max(0.0, agi - std_ded - senior_ded)
         tax = compute_tax(taxable, tb)
@@ -139,27 +186,40 @@ def simulate(
         net_income = agi - tax - irmaa_annual
 
         # Expenses + LTC
-        living = inputs.start_living_expenses * infl_n
+        living = inputs.start_living_expenses * inflation_n
         if inputs.ltc_start_year and year >= inputs.ltc_start_year:
-            living += inputs.ltc_start_cost * infl_n
+            living += inputs.ltc_start_cost * inflation_n
 
         # If net income insufficient, draw from Roth
         amt_from_roth = max(0.0, living - net_income)
         roth_next -= amt_from_roth
 
         row = PlannerRow(
-            year=year, age=age, trad_ira=round(trad_next, 2), roth_ira=round(roth_next, 2),
-            rmd=round(rmd, 2), roth_conversion=round(roth_conv, 2), extra_trad_dist=round(extra_dist, 2),
-            ssa=round(ssa, 2), agi=round(agi, 2), std_deduction=round(std_ded, 2),
-            senior_deduction=round(senior_ded, 2), taxable_income=round(taxable, 2),
-            tax=round(tax, 2), magi=round(magi, 2), irmaa_annual=round(irmaa_annual, 2),
-            living_expenses=round(living, 2), amt_from_roth=round(amt_from_roth, 2), net_income=round(net_income, 2),
+            year=year,
+            age=age,
+            trad_ira=round(trad_next, 2),
+            roth_ira=round(roth_next, 2),
+            rmd=round(rmd, 2),
+            roth_conversion=round(roth_conv, 2),
+            extra_trad_dist=round(extra_dist, 2),
+            ssa=round(ssa, 2),
+            agi=round(agi, 2),
+            std_deduction=round(std_ded, 2),
+            senior_deduction=round(senior_ded, 2),
+            taxable_income=round(taxable, 2),
+            tax=round(tax, 2),
+            magi=round(magi, 2),
+            irmaa_annual=round(irmaa_annual, 2),
+            living_expenses=round(living, 2),
+            amt_from_roth=round(amt_from_roth, 2),
+            net_income=round(net_income, 2),
         )
         rows.append(row)
 
         trad, roth = trad_next, roth_next
 
     return rows
+
 
 def to_dataframe(rows: List[PlannerRow]):
     try:

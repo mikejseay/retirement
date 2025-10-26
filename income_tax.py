@@ -7,14 +7,17 @@ of brackets like:
 All amounts are in *nominal* dollars for that tax year. Inflation
 adjustments (if any) should be done by the caller.
 """
+
 from dataclasses import dataclass
 from typing import List, Optional
+
 
 @dataclass(frozen=True)
 class TaxBracket:
     start: float
     end: Optional[float]  # None means no upper bound
-    rate: float           # e.g., 0.22 for 22%
+    rate: float  # e.g., 0.22 for 22%
+
 
 def compute_tax(taxable_income: float, brackets: List[TaxBracket]) -> float:
     """Compute tax owed under progressive brackets.
@@ -32,13 +35,14 @@ def compute_tax(taxable_income: float, brackets: List[TaxBracket]) -> float:
     tax = 0.0
     for b in brackets:
         lower = b.start
-        upper = float('inf') if b.end is None else b.end
+        upper = float("inf") if b.end is None else b.end
         if taxable_income <= lower:
             break
         amount_in_bracket = min(taxable_income, upper) - lower
         if amount_in_bracket > 0:
             tax += amount_in_bracket * b.rate
     return tax
+
 
 # Default brackets parsed from the spreadsheet (can be overridden)
 DEFAULT_BRACKETS: List[TaxBracket] = [

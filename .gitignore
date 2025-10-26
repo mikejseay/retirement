@@ -8,3 +8,12 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Jetbrains
+.idea
+
+# Outputs
+*.csv
+
+# Excel tmp files
+~$*.xlsx

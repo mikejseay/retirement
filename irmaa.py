@@ -3,8 +3,10 @@
 Given MAGI and filing-status-specific brackets, returns the monthly surcharge
 and annual surcharge for the year.
 """
+
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
+
 
 @dataclass(frozen=True)
 class IRMAABracket:
@@ -12,13 +14,15 @@ class IRMAABracket:
     end: Optional[float]  # None means no upper bound
     monthly_surcharge: float
 
+
 def surcharge_for_magi(magi: float, brackets: List[IRMAABracket]) -> Tuple[float, float]:
     for b in brackets:
-        upper = float('inf') if b.end is None else b.end
+        upper = float("inf") if b.end is None else b.end
         if b.start <= magi <= upper:
             return b.monthly_surcharge, b.monthly_surcharge * 12.0
     # If somehow below first bracket
     return 0.0, 0.0
+
 
 # Default IRMAA brackets parsed from the spreadsheet (can be overridden)
 DEFAULT_BRACKETS: List[IRMAABracket] = [
