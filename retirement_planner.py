@@ -30,6 +30,9 @@ from irmaa import (
     DEFAULT_BRACKETS as DEFAULT_IRMAA_BRACKETS,
 )
 
+# TODO: can the calculator be programmed to recommend Trad IRA additional distributions?
+# TODO: when LTC kicks in, living expenses probably decrease to some extent
+
 # Minimal IRS Uniform Lifetime Table for ages 73..110 (2023+). Extend as needed.
 UNIFORM_LIFETIME_DIVISORS = {
     73: 26.5,
