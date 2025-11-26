@@ -20,14 +20,13 @@ Key simplifying assumptions where the spreadsheet logic wasn't 100% explicit:
 The code is structured so you can replace any assumption with your own logic.
 """
 
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional
+from dataclasses import asdict, dataclass
 
-from income_tax import TaxBracket, compute_tax, DEFAULT_BRACKETS as DEFAULT_TAX_BRACKETS
+from income_tax import DEFAULT_BRACKETS as DEFAULT_TAX_BRACKETS, TaxBracket, compute_tax
 from irmaa import (
+    DEFAULT_BRACKETS as DEFAULT_IRMAA_BRACKETS,
     IRMAABracket,
     surcharge_for_magi,
-    DEFAULT_BRACKETS as DEFAULT_IRMAA_BRACKETS,
 )
 
 # TODO: can the calculator be programmed to recommend Trad IRA additional distributions?
@@ -91,12 +90,12 @@ class PlannerInputs:
     start_ssa: float = 40000.0
     ssa_factor: float = 0.88
     start_living_expenses: float = 65000.0
-    ltc_start_year: Optional[int] = 2038
+    ltc_start_year: int | None = 2038
     ltc_start_cost: float = 100000.0
     rmd_start_age: int = 73
 
-    tax_brackets: Optional[List[TaxBracket]] = None
-    irmaa_brackets: Optional[List[IRMAABracket]] = None
+    tax_brackets: list[TaxBracket] | None = None
+    irmaa_brackets: list[IRMAABracket] | None = None
 
 
 @dataclass
@@ -135,14 +134,14 @@ def rmd_for_age(age: int, balance: float, rmd_start_age: int = 73) -> float:
 def simulate(
     inputs: PlannerInputs,
     years: int,
-    roth_conversions: Dict[int, float],
-    extra_trad_distributions: Dict[int, float],
+    roth_conversions: dict[int, float],
+    extra_trad_distributions: dict[int, float],
     include_senior_deduction: bool = True,
-) -> List[PlannerRow]:
+) -> list[PlannerRow]:
     tb = inputs.tax_brackets or DEFAULT_TAX_BRACKETS
     ib = inputs.irmaa_brackets or DEFAULT_IRMAA_BRACKETS
 
-    rows: List[PlannerRow] = []
+    rows: list[PlannerRow] = []
     trad = float(inputs.start_trad_ira)
     roth = float(inputs.start_roth_ira)
 
@@ -224,7 +223,7 @@ def simulate(
     return rows
 
 
-def to_dataframe(rows: List[PlannerRow]):
+def to_dataframe(rows: list[PlannerRow]):
     try:
         import pandas as pd
     except Exception:

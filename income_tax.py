@@ -9,17 +9,16 @@ adjustments (if any) should be done by the caller.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
 
 
 @dataclass(frozen=True)
 class TaxBracket:
     start: float
-    end: Optional[float]  # None means no upper bound
+    end: float | None  # None means no upper bound
     rate: float  # e.g., 0.22 for 22%
 
 
-def compute_tax(taxable_income: float, brackets: List[TaxBracket]) -> float:
+def compute_tax(taxable_income: float, brackets: list[TaxBracket]) -> float:
     """Compute tax owed under progressive brackets.
 
     Args:
@@ -45,7 +44,7 @@ def compute_tax(taxable_income: float, brackets: List[TaxBracket]) -> float:
 
 
 # Default brackets parsed from the spreadsheet (can be overridden)
-DEFAULT_BRACKETS: List[TaxBracket] = [
+DEFAULT_BRACKETS: list[TaxBracket] = [
     TaxBracket(start=0, end=11925, rate=0.1),
     TaxBracket(start=11925, end=48475, rate=0.12),
     TaxBracket(start=48475, end=103350, rate=0.22),

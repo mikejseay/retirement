@@ -5,17 +5,16 @@ and annual surcharge for the year.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 
 @dataclass(frozen=True)
 class IRMAABracket:
     start: float
-    end: Optional[float]  # None means no upper bound
+    end: float | None  # None means no upper bound
     monthly_surcharge: float
 
 
-def surcharge_for_magi(magi: float, brackets: List[IRMAABracket]) -> Tuple[float, float]:
+def surcharge_for_magi(magi: float, brackets: list[IRMAABracket]) -> tuple[float, float]:
     for b in brackets:
         upper = float("inf") if b.end is None else b.end
         if b.start <= magi <= upper:
@@ -25,7 +24,7 @@ def surcharge_for_magi(magi: float, brackets: List[IRMAABracket]) -> Tuple[float
 
 
 # Default IRMAA brackets parsed from the spreadsheet (can be overridden)
-DEFAULT_BRACKETS: List[IRMAABracket] = [
+DEFAULT_BRACKETS: list[IRMAABracket] = [
     IRMAABracket(start=0.0, end=None, monthly_surcharge=0.0),
     IRMAABracket(start=106011.0, end=None, monthly_surcharge=87.7),
     IRMAABracket(start=133001.0, end=None, monthly_surcharge=220.3),
